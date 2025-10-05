@@ -1,5 +1,1 @@
-django
-djangorestframework
-requests
-django-cors-headers
-gunicorn
+whitenoise
