@@ -529,63 +529,62 @@ const DataTable = ({ loading, rawData }) => {
 };
 
 const LiveMapPage = ({
-  loading,
-  error,
-  rawData,
-  summaryData,
-  setRawData,
-  setSummaryData,
-  setError,
-  setLoading,
+  liveRawData,
+  liveSummaryData,
+  setLiveRawData,
+  setLiveSummaryData,
+  liveError,
+  setLiveError,
 }) => {
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+
   useEffect(() => {
     const fetchAllStations = async () => {
-      if (!loading) setLoading(true); // Ensure loading is true at start
-      setError(null);
+      setLiveError(null);
       try {
         const response = await fetch(
           "http://127.0.0.1:8000/api/all-stations-live/",
         );
         if (!response.ok) throw new Error("Failed to fetch all stations data");
         const data = await response.json();
-        setRawData(data);
+        setLiveRawData(data);
         const levels = data
           .map((d) => d.latest_level)
           .filter((l) => l !== null);
         if (levels.length > 0) {
-          setSummaryData({
+          setLiveSummaryData({
             min_level: Math.min(...levels),
             max_level: Math.max(...levels),
           });
         } else {
-          setSummaryData(null);
+          setLiveSummaryData(null);
         }
       } catch (err) {
-        setError(err.message);
+        setLiveError(err.message);
       } finally {
-        setLoading(false);
+        if (isInitialLoading) setIsInitialLoading(false);
       }
     };
 
     fetchAllStations();
     const intervalId = setInterval(fetchAllStations, 60000);
     return () => clearInterval(intervalId);
-  }, []); // Empty dependency array is correct here, we only want this to run once on mount
+  }, []);
 
   return (
     <div className="h-[calc(100vh-65px)] w-full">
-      {error && (
+      {liveError && (
         <Alert className="absolute top-20 left-1/2 -translate-x-1/2 z-[1000]">
-          {error}
+          {liveError}
         </Alert>
       )}
       <MapView
         isLive={true}
-        rawData={rawData}
-        summaryData={summaryData}
+        rawData={liveRawData}
+        summaryData={liveSummaryData}
         mapCenter={[22.5937, 78.9629]}
         mapZoom={4}
-        loading={loading}
+        loading={isInitialLoading}
       />
     </div>
   );
@@ -643,11 +642,19 @@ const DashboardPage = ({
 export default function App() {
   const [view, setView] = useState("dashboard");
   const [statesWithDistricts, setStatesWithDistricts] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+
+  // State for Dashboard
+  const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [dashboardError, setDashboardError] = useState(null);
   const [summaryData, setSummaryData] = useState(null);
   const [trendData, setTrendData] = useState(null);
   const [rawData, setRawData] = useState(null);
+
+  // State for Live Map
+  const [liveRawData, setLiveRawData] = useState(null);
+  const [liveSummaryData, setLiveSummaryData] = useState(null);
+  const [liveError, setLiveError] = useState(null);
+
   const [selectedState, setSelectedState] = useState("");
   const [selectedDistrict, setSelectedDistrict] = useState("");
   const [dateRange, setDateRange] = useState({
@@ -669,7 +676,7 @@ export default function App() {
           setSelectedDistrict(data.states[0].districts[0]);
         }
       } catch (err) {
-        setError(`Could not load location data: ${err.message}`);
+        setDashboardError(`Could not load location data: ${err.message}`);
       }
     };
     fetchLocations();
@@ -693,11 +700,11 @@ export default function App() {
 
   const handleAnalyze = async () => {
     if (!selectedState || !selectedDistrict) {
-      setError("Please select a state and district.");
+      setDashboardError("Please select a state and district.");
       return;
     }
-    setLoading(true);
-    setError(null);
+    setDashboardLoading(true);
+    setDashboardError(null);
     setSummaryData(null);
     setTrendData(null);
     setRawData(null);
@@ -733,7 +740,9 @@ export default function App() {
         responses.map((res) => res.json()),
       );
       if (!raw.data || raw.data.length === 0) {
-        setError("No groundwater data found for the selected criteria.");
+        setDashboardError(
+          "No groundwater data found for the selected criteria.",
+        );
         setRawData([]);
         setSummaryData(null);
         setTrendData(null);
@@ -748,9 +757,9 @@ export default function App() {
         setMapZoom(9);
       }
     } catch (err) {
-      setError(`Failed to fetch data. Details: ${err.message}`);
+      setDashboardError(`Failed to fetch data. Details: ${err.message}`);
     } finally {
-      setLoading(false);
+      setDashboardLoading(false);
     }
   };
 
@@ -766,15 +775,15 @@ export default function App() {
           dateRange={dateRange}
           setDateRange={setDateRange}
           handleAnalyze={handleAnalyze}
-          loading={loading}
+          loading={dashboardLoading}
           statesWithDistricts={statesWithDistricts}
           availableDistricts={availableDistricts}
         />
       )}
       {view === "dashboard" ? (
         <DashboardPage
-          loading={loading}
-          error={error}
+          loading={dashboardLoading}
+          error={dashboardError}
           rawData={rawData}
           summaryData={summaryData}
           trendData={trendData}
@@ -783,14 +792,12 @@ export default function App() {
         />
       ) : (
         <LiveMapPage
-          loading={loading}
-          error={error}
-          rawData={rawData}
-          summaryData={summaryData}
-          setRawData={setRawData}
-          setSummaryData={setSummaryData}
-          setError={setError}
-          setLoading={setLoading}
+          liveRawData={liveRawData}
+          liveSummaryData={liveSummaryData}
+          setLiveRawData={setLiveRawData}
+          setLiveSummaryData={setLiveSummaryData}
+          liveError={liveError}
+          setLiveError={setLiveError}
         />
       )}
     </div>
