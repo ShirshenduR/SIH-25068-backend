@@ -8,11 +8,32 @@ from api.wris_api import fetch_wris_data  # Re-use the helper function
 LOCATIONS_API_URL = "https://raw.githubusercontent.com/sab99r/Indian-States-And-Districts/master/states-and-districts.json"
 
 
+from datetime import datetime, timedelta
+
+
 class Command(BaseCommand):
     help = "Fetches groundwater data for all districts in India and updates the local database."
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--days",
+            type=int,
+            default=0,
+            help="Number of past days to fetch data for. 0 for all historical data since 2023.",
+        )
+
     def handle(self, *args, **options):
         self.stdout.write("Starting data fetch for all stations...")
+
+        days = options["days"]
+        end_date_str = datetime.now().strftime("%Y-%m-%d")
+        if days > 0:
+            self.stdout.write(f"Fetching data for the last {days} day(s).")
+            start_date = datetime.now() - timedelta(days=days)
+            start_date_str = start_date.strftime("%Y-%m-%d")
+        else:
+            self.stdout.write("Fetching all historical data since Jan 2023.")
+            start_date_str = "2023-01-01"
 
         try:
             locations_response = requests.get(LOCATIONS_API_URL)
@@ -30,12 +51,11 @@ class Command(BaseCommand):
                     f"Fetching data for {district_name}, {state_name} ({i + 1}/{total_states}) ..."
                 )
 
-                # Use a recent, wide date range to get latest data
                 request_payload = {
                     "stateName": state_name.upper(),
                     "districtName": district_name.upper(),
-                    "startdate": "2023-01-01",  # Fetch data for the last couple of years
-                    "enddate": datetime.now().strftime("%Y-%m-%d"),
+                    "startdate": start_date_str,
+                    "enddate": end_date_str,
                 }
 
                 # Reuse the existing fetch_wris_data function

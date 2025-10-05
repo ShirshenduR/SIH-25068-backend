@@ -1,0 +1,3 @@
+# This crontab will run the update_station_data command every day at midnight.
+0 0 * * * /usr/local/bin/python /app/manage.py update_station_data --days=1 >> /var/log/cron.log 2>&1
+# An empty line is required at the end of this file for cron to work correctly.
