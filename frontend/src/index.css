@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-gray-900 text-white;
+}
+
+/* Force Leaflet's default div icon to have no background or border */
+.leaflet-div-icon {
+  background: transparent !important;
+  border: none !important;
+}
